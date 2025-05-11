@@ -1,0 +1,477 @@
+
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8">
+  <title>학생 네트워크 시각화</title>
+  <style>
+    html, body { height: 100%; margin: 0; overflow: hidden; font-family: sans-serif; }
+    #controls { position: absolute; top: 10px; left: 10px; z-index: 1000; background: white; padding: 10px; border-radius: 8px; }
+    button { margin: 4px; }
+    .node { stroke: #fff; stroke-width: 1.5px; cursor: pointer; }
+    .link { stroke-opacity: 0.4; stroke-width: 2px; fill: none; }
+    .link.highlight { stroke-opacity: 1; stroke-width: 4px; }
+    .highlight-node { stroke: black; stroke-width: 3px; }
+  </style>
+</head>
+<body>
+  <div id="controls">
+    <button onclick="toggleLinks('friend')">친구관계 보기</button>
+    <button onclick="toggleLinks('desired')">친하고 싶은 친구 보기</button>
+    <button onclick="toggleLinks('study')">함께 공부하는 친구 보기</button>
+    <button onclick="toggleLinks('collab')">함께 협력하는 친구 보기</button>
+    <button onclick="toggleLinks('help')">도움을 요청하는 친구관계 보기</button>
+  </div>
+
+  <script>
+const students = [
+  { id: "31강*원", gender: 3 },
+  { id: "32김*은", gender: 1 },
+  { id: "33김*지", gender: 1 },
+  { id: "34김*하", gender: 1 },
+  { id: "35김*연", gender: 1 },
+  { id: "36김*후", gender: 0 },
+  { id: "37김*민", gender: 1 },
+  { id: "38박*후", gender: 0 },
+  { id: "39박*현", gender: 1 },
+  { id: "310서*호", gender: 0 },
+  { id: "311손*우", gender: 1 },
+  { id: "312안*우", gender: 0 },
+  { id: "313우*민", gender: 0 },
+  { id: "314이*건", gender: 0 },
+  { id: "315이*연", gender: 1 },
+  { id: "316이*규", gender: 1 },
+  { id: "317이*슬", gender: 1 },
+  { id: "318임*우", gender: 0 },
+  { id: "319정*리", gender: 1 },
+  { id: "320조*은", gender: 1 },
+  { id: "321차*윤", gender: 0 },
+  { id: "322최*우", gender: 1 },
+  { id: "323한*헌", gender: 0 },
+  { id: "324허*영", gender: 0 },
+  { id: "325홍*기", gender: 0 },
+];
+const linkTypes = {
+friend: [
+    { source: "32김*은", target: "33김*지", type: "friend", bidirectional: false },
+    { source: "32김*은", target: "34김*하", type: "friend", bidirectional: true },
+    { source: "32김*은", target: "35김*연", type: "friend", bidirectional: true },
+    { source: "32김*은", target: "37김*민", type: "friend", bidirectional: false },
+    { source: "32김*은", target: "39박*현", type: "friend", bidirectional: true },
+    { source: "32김*은", target: "311손*우", type: "friend", bidirectional: true },
+    { source: "32김*은", target: "315이*연", type: "friend", bidirectional: true },
+    { source: "32김*은", target: "317이*슬", type: "friend", bidirectional: false },
+    { source: "32김*은", target: "319정*리", type: "friend", bidirectional: false },
+    { source: "32김*은", target: "320조*은", type: "friend", bidirectional: false },
+    { source: "32김*은", target: "322최*우", type: "friend", bidirectional: false },
+    { source: "33김*지", target: "34김*하", type: "friend", bidirectional: true },
+    { source: "33김*지", target: "35김*연", type: "friend", bidirectional: true },
+    { source: "33김*지", target: "37김*민", type: "friend", bidirectional: false },
+    { source: "33김*지", target: "39박*현", type: "friend", bidirectional: true },
+    { source: "33김*지", target: "311손*우", type: "friend", bidirectional: true },
+    { source: "33김*지", target: "313우*민", type: "friend", bidirectional: false },
+    { source: "33김*지", target: "314이*건", type: "friend", bidirectional: true },
+    { source: "33김*지", target: "315이*연", type: "friend", bidirectional: true },
+    { source: "33김*지", target: "317이*슬", type: "friend", bidirectional: true },
+    { source: "33김*지", target: "319정*리", type: "friend", bidirectional: true },
+    { source: "33김*지", target: "320조*은", type: "friend", bidirectional: true },
+    { source: "33김*지", target: "324허*영", type: "friend", bidirectional: false },
+    { source: "34김*하", target: "35김*연", type: "friend", bidirectional: true },
+    { source: "34김*하", target: "36김*후", type: "friend", bidirectional: false },
+    { source: "34김*하", target: "39박*현", type: "friend", bidirectional: true },
+    { source: "34김*하", target: "311손*우", type: "friend", bidirectional: true },
+    { source: "34김*하", target: "314이*건", type: "friend", bidirectional: true },
+    { source: "34김*하", target: "315이*연", type: "friend", bidirectional: true },
+    { source: "34김*하", target: "317이*슬", type: "friend", bidirectional: false },
+    { source: "34김*하", target: "320조*은", type: "friend", bidirectional: false },
+    { source: "34김*하", target: "322최*우", type: "friend", bidirectional: false },
+    { source: "35김*연", target: "311손*우", type: "friend", bidirectional: true },
+    { source: "35김*연", target: "314이*건", type: "friend", bidirectional: true },
+    { source: "35김*연", target: "315이*연", type: "friend", bidirectional: true },
+    { source: "35김*연", target: "320조*은", type: "friend", bidirectional: false },
+    { source: "36김*후", target: "33김*지", type: "friend", bidirectional: false },
+    { source: "36김*후", target: "314이*건", type: "friend", bidirectional: false },
+    { source: "36김*후", target: "321차*윤", type: "friend", bidirectional: true },
+    { source: "36김*후", target: "324허*영", type: "friend", bidirectional: false },
+    { source: "36김*후", target: "325홍*기", type: "friend", bidirectional: true },
+    { source: "37김*민", target: "39박*현", type: "friend", bidirectional: false },
+    { source: "37김*민", target: "317이*슬", type: "friend", bidirectional: true },
+    { source: "37김*민", target: "320조*은", type: "friend", bidirectional: false },
+    { source: "37김*민", target: "322최*우", type: "friend", bidirectional: true },
+    { source: "38박*후", target: "31강*원", type: "friend", bidirectional: false },
+    { source: "38박*후", target: "323한*헌", type: "friend", bidirectional: true },
+    { source: "39박*현", target: "35김*연", type: "friend", bidirectional: false },
+    { source: "39박*현", target: "311손*우", type: "friend", bidirectional: false },
+    { source: "39박*현", target: "315이*연", type: "friend", bidirectional: true },
+    { source: "39박*현", target: "317이*슬", type: "friend", bidirectional: true },
+    { source: "39박*현", target: "319정*리", type: "friend", bidirectional: true },
+    { source: "39박*현", target: "320조*은", type: "friend", bidirectional: false },
+    { source: "39박*현", target: "322최*우", type: "friend", bidirectional: true },
+    { source: "310서*호", target: "31강*원", type: "friend", bidirectional: false },
+    { source: "310서*호", target: "38박*후", type: "friend", bidirectional: false },
+    { source: "310서*호", target: "313우*민", type: "friend", bidirectional: true },
+    { source: "310서*호", target: "318임*우", type: "friend", bidirectional: true },
+    { source: "310서*호", target: "324허*영", type: "friend", bidirectional: true },
+    { source: "311손*우", target: "315이*연", type: "friend", bidirectional: true },
+    { source: "311손*우", target: "317이*슬", type: "friend", bidirectional: false },
+    { source: "311손*우", target: "320조*은", type: "friend", bidirectional: false },
+    { source: "312안*우", target: "313우*민", type: "friend", bidirectional: true },
+    { source: "312안*우", target: "316이*규", type: "friend", bidirectional: true },
+    { source: "312안*우", target: "318임*우", type: "friend", bidirectional: false },
+    { source: "312안*우", target: "321차*윤", type: "friend", bidirectional: true },
+    { source: "313우*민", target: "31강*원", type: "friend", bidirectional: false },
+    { source: "313우*민", target: "36김*후", type: "friend", bidirectional: false },
+    { source: "313우*민", target: "38박*후", type: "friend", bidirectional: false },
+    { source: "313우*민", target: "314이*건", type: "friend", bidirectional: true },
+    { source: "313우*민", target: "316이*규", type: "friend", bidirectional: false },
+    { source: "313우*민", target: "318임*우", type: "friend", bidirectional: false },
+    { source: "313우*민", target: "321차*윤", type: "friend", bidirectional: true },
+    { source: "313우*민", target: "323한*헌", type: "friend", bidirectional: false },
+    { source: "313우*민", target: "324허*영", type: "friend", bidirectional: true },
+    { source: "313우*민", target: "325홍*기", type: "friend", bidirectional: true },
+    { source: "314이*건", target: "32김*은", type: "friend", bidirectional: false },
+    { source: "314이*건", target: "37김*민", type: "friend", bidirectional: false },
+    { source: "314이*건", target: "38박*후", type: "friend", bidirectional: false },
+    { source: "314이*건", target: "311손*우", type: "friend", bidirectional: false },
+    { source: "314이*건", target: "312안*우", type: "friend", bidirectional: false },
+    { source: "314이*건", target: "315이*연", type: "friend", bidirectional: false },
+    { source: "314이*건", target: "316이*규", type: "friend", bidirectional: false },
+    { source: "314이*건", target: "318임*우", type: "friend", bidirectional: false },
+    { source: "314이*건", target: "319정*리", type: "friend", bidirectional: false },
+    { source: "314이*건", target: "320조*은", type: "friend", bidirectional: false },
+    { source: "314이*건", target: "322최*우", type: "friend", bidirectional: false },
+    { source: "314이*건", target: "324허*영", type: "friend", bidirectional: true },
+    { source: "314이*건", target: "325홍*기", type: "friend", bidirectional: true },
+    { source: "315이*연", target: "37김*민", type: "friend", bidirectional: false },
+    { source: "315이*연", target: "317이*슬", type: "friend", bidirectional: false },
+    { source: "315이*연", target: "319정*리", type: "friend", bidirectional: false },
+    { source: "315이*연", target: "320조*은", type: "friend", bidirectional: true },
+    { source: "316이*규", target: "321차*윤", type: "friend", bidirectional: true },
+    { source: "317이*슬", target: "322최*우", type: "friend", bidirectional: true },
+    { source: "318임*우", target: "324허*영", type: "friend", bidirectional: true },
+    { source: "319정*리", target: "37김*민", type: "friend", bidirectional: false },
+    { source: "319정*리", target: "317이*슬", type: "friend", bidirectional: false },
+    { source: "319정*리", target: "320조*은", type: "friend", bidirectional: false },
+    { source: "319정*리", target: "322최*우", type: "friend", bidirectional: true },
+    { source: "320조*은", target: "317이*슬", type: "friend", bidirectional: false },
+    { source: "321차*윤", target: "38박*후", type: "friend", bidirectional: false },
+    { source: "321차*윤", target: "318임*우", type: "friend", bidirectional: false },
+    { source: "321차*윤", target: "322최*우", type: "friend", bidirectional: true },
+    { source: "321차*윤", target: "324허*영", type: "friend", bidirectional: true },
+    { source: "323한*헌", target: "314이*건", type: "friend", bidirectional: false },
+    { source: "323한*헌", target: "318임*우", type: "friend", bidirectional: false },
+    { source: "324허*영", target: "31강*원", type: "friend", bidirectional: false },
+    { source: "324허*영", target: "38박*후", type: "friend", bidirectional: false },
+    { source: "324허*영", target: "312안*우", type: "friend", bidirectional: false },
+    { source: "324허*영", target: "316이*규", type: "friend", bidirectional: false },
+    { source: "324허*영", target: "323한*헌", type: "friend", bidirectional: false },
+    { source: "325홍*기", target: "31강*원", type: "friend", bidirectional: false },
+    { source: "325홍*기", target: "33김*지", type: "friend", bidirectional: false },
+    { source: "325홍*기", target: "319정*리", type: "friend", bidirectional: false },
+  ],
+desired: [
+    { source: "32김*은", target: "33김*지", type: "desired", bidirectional: false },
+    { source: "32김*은", target: "35김*연", type: "desired", bidirectional: true },
+    { source: "32김*은", target: "311손*우", type: "desired", bidirectional: false },
+    { source: "34김*하", target: "32김*은", type: "desired", bidirectional: false },
+    { source: "34김*하", target: "33김*지", type: "desired", bidirectional: false },
+    { source: "34김*하", target: "35김*연", type: "desired", bidirectional: true },
+    { source: "34김*하", target: "311손*우", type: "desired", bidirectional: false },
+    { source: "34김*하", target: "314이*건", type: "desired", bidirectional: false },
+    { source: "34김*하", target: "315이*연", type: "desired", bidirectional: true },
+    { source: "34김*하", target: "317이*슬", type: "desired", bidirectional: false },
+    { source: "34김*하", target: "320조*은", type: "desired", bidirectional: false },
+    { source: "35김*연", target: "37김*민", type: "desired", bidirectional: false },
+    { source: "35김*연", target: "39박*현", type: "desired", bidirectional: false },
+    { source: "35김*연", target: "311손*우", type: "desired", bidirectional: false },
+    { source: "35김*연", target: "315이*연", type: "desired", bidirectional: true },
+    { source: "35김*연", target: "317이*슬", type: "desired", bidirectional: false },
+    { source: "35김*연", target: "319정*리", type: "desired", bidirectional: false },
+    { source: "35김*연", target: "320조*은", type: "desired", bidirectional: false },
+    { source: "35김*연", target: "322최*우", type: "desired", bidirectional: false },
+    { source: "36김*후", target: "33김*지", type: "desired", bidirectional: false },
+    { source: "36김*후", target: "314이*건", type: "desired", bidirectional: false },
+    { source: "36김*후", target: "321차*윤", type: "desired", bidirectional: false },
+    { source: "36김*후", target: "324허*영", type: "desired", bidirectional: false },
+    { source: "36김*후", target: "325홍*기", type: "desired", bidirectional: false },
+    { source: "37김*민", target: "315이*연", type: "desired", bidirectional: true },
+    { source: "310서*호", target: "323한*헌", type: "desired", bidirectional: false },
+    { source: "311손*우", target: "37김*민", type: "desired", bidirectional: false },
+    { source: "311손*우", target: "39박*현", type: "desired", bidirectional: false },
+    { source: "311손*우", target: "319정*리", type: "desired", bidirectional: true },
+    { source: "311손*우", target: "322최*우", type: "desired", bidirectional: false },
+    { source: "314이*건", target: "31강*원", type: "desired", bidirectional: false },
+    { source: "314이*건", target: "325홍*기", type: "desired", bidirectional: false },
+    { source: "315이*연", target: "32김*은", type: "desired", bidirectional: false },
+    { source: "315이*연", target: "33김*지", type: "desired", bidirectional: false },
+    { source: "315이*연", target: "39박*현", type: "desired", bidirectional: false },
+    { source: "315이*연", target: "311손*우", type: "desired", bidirectional: false },
+    { source: "315이*연", target: "317이*슬", type: "desired", bidirectional: false },
+    { source: "315이*연", target: "319정*리", type: "desired", bidirectional: false },
+    { source: "315이*연", target: "320조*은", type: "desired", bidirectional: false },
+    { source: "315이*연", target: "322최*우", type: "desired", bidirectional: false },
+    { source: "317이*슬", target: "37김*민", type: "desired", bidirectional: false },
+    { source: "317이*슬", target: "39박*현", type: "desired", bidirectional: false },
+    { source: "318임*우", target: "325홍*기", type: "desired", bidirectional: false },
+    { source: "320조*은", target: "32김*은", type: "desired", bidirectional: false },
+    { source: "323한*헌", target: "31강*원", type: "desired", bidirectional: false },
+    { source: "323한*헌", target: "36김*후", type: "desired", bidirectional: false },
+    { source: "323한*헌", target: "324허*영", type: "desired", bidirectional: false },
+    { source: "324허*영", target: "31강*원", type: "desired", bidirectional: false },
+    { source: "324허*영", target: "310서*호", type: "desired", bidirectional: false },
+    { source: "325홍*기", target: "35김*연", type: "desired", bidirectional: false },
+    { source: "325홍*기", target: "37김*민", type: "desired", bidirectional: false },
+    { source: "325홍*기", target: "38박*후", type: "desired", bidirectional: false },
+    { source: "325홍*기", target: "39박*현", type: "desired", bidirectional: false },
+    { source: "325홍*기", target: "310서*호", type: "desired", bidirectional: false },
+    { source: "325홍*기", target: "311손*우", type: "desired", bidirectional: false },
+    { source: "325홍*기", target: "312안*우", type: "desired", bidirectional: false },
+    { source: "325홍*기", target: "315이*연", type: "desired", bidirectional: false },
+    { source: "325홍*기", target: "317이*슬", type: "desired", bidirectional: false },
+  ],
+study: [
+    { source: "32김*은", target: "35김*연", type: "study", bidirectional: true },
+    { source: "33김*지", target: "34김*하", type: "study", bidirectional: true },
+    { source: "34김*하", target: "32김*은", type: "study", bidirectional: false },
+    { source: "34김*하", target: "35김*연", type: "study", bidirectional: false },
+    { source: "34김*하", target: "311손*우", type: "study", bidirectional: false },
+    { source: "38박*후", target: "318임*우", type: "study", bidirectional: false },
+    { source: "38박*후", target: "319정*리", type: "study", bidirectional: false },
+    { source: "38박*후", target: "323한*헌", type: "study", bidirectional: false },
+    { source: "39박*현", target: "32김*은", type: "study", bidirectional: false },
+    { source: "39박*현", target: "33김*지", type: "study", bidirectional: false },
+    { source: "39박*현", target: "34김*하", type: "study", bidirectional: false },
+    { source: "39박*현", target: "311손*우", type: "study", bidirectional: false },
+    { source: "39박*현", target: "315이*연", type: "study", bidirectional: false },
+    { source: "39박*현", target: "317이*슬", type: "study", bidirectional: false },
+    { source: "39박*현", target: "319정*리", type: "study", bidirectional: false },
+    { source: "39박*현", target: "320조*은", type: "study", bidirectional: false },
+    { source: "39박*현", target: "322최*우", type: "study", bidirectional: false },
+    { source: "310서*호", target: "318임*우", type: "study", bidirectional: true },
+    { source: "311손*우", target: "317이*슬", type: "study", bidirectional: true },
+    { source: "312안*우", target: "316이*규", type: "study", bidirectional: true },
+    { source: "314이*건", target: "34김*하", type: "study", bidirectional: false },
+    { source: "314이*건", target: "38박*후", type: "study", bidirectional: false },
+    { source: "314이*건", target: "39박*현", type: "study", bidirectional: false },
+    { source: "314이*건", target: "310서*호", type: "study", bidirectional: false },
+    { source: "314이*건", target: "313우*민", type: "study", bidirectional: false },
+    { source: "314이*건", target: "323한*헌", type: "study", bidirectional: false },
+    { source: "314이*건", target: "325홍*기", type: "study", bidirectional: false },
+    { source: "321차*윤", target: "312안*우", type: "study", bidirectional: false },
+    { source: "321차*윤", target: "313우*민", type: "study", bidirectional: false },
+    { source: "321차*윤", target: "316이*규", type: "study", bidirectional: false },
+    { source: "321차*윤", target: "322최*우", type: "study", bidirectional: false },
+    { source: "321차*윤", target: "324허*영", type: "study", bidirectional: false },
+    { source: "324허*영", target: "31강*원", type: "study", bidirectional: false },
+  ],
+collab: [
+    { source: "32김*은", target: "35김*연", type: "collab", bidirectional: true },
+    { source: "33김*지", target: "311손*우", type: "collab", bidirectional: false },
+    { source: "34김*하", target: "32김*은", type: "collab", bidirectional: false },
+    { source: "34김*하", target: "33김*지", type: "collab", bidirectional: false },
+    { source: "34김*하", target: "35김*연", type: "collab", bidirectional: true },
+    { source: "34김*하", target: "39박*현", type: "collab", bidirectional: false },
+    { source: "34김*하", target: "311손*우", type: "collab", bidirectional: false },
+    { source: "34김*하", target: "314이*건", type: "collab", bidirectional: false },
+    { source: "34김*하", target: "317이*슬", type: "collab", bidirectional: false },
+    { source: "34김*하", target: "320조*은", type: "collab", bidirectional: false },
+    { source: "35김*연", target: "311손*우", type: "collab", bidirectional: false },
+    { source: "35김*연", target: "315이*연", type: "collab", bidirectional: true },
+    { source: "35김*연", target: "320조*은", type: "collab", bidirectional: false },
+    { source: "36김*후", target: "33김*지", type: "collab", bidirectional: false },
+    { source: "36김*후", target: "314이*건", type: "collab", bidirectional: true },
+    { source: "36김*후", target: "324허*영", type: "collab", bidirectional: false },
+    { source: "37김*민", target: "320조*은", type: "collab", bidirectional: false },
+    { source: "38박*후", target: "321차*윤", type: "collab", bidirectional: true },
+    { source: "38박*후", target: "322최*우", type: "collab", bidirectional: false },
+    { source: "39박*현", target: "319정*리", type: "collab", bidirectional: true },
+    { source: "310서*호", target: "324허*영", type: "collab", bidirectional: false },
+    { source: "311손*우", target: "31강*원", type: "collab", bidirectional: false },
+    { source: "311손*우", target: "317이*슬", type: "collab", bidirectional: true },
+    { source: "311손*우", target: "324허*영", type: "collab", bidirectional: false },
+    { source: "313우*민", target: "314이*건", type: "collab", bidirectional: true },
+    { source: "314이*건", target: "33김*지", type: "collab", bidirectional: false },
+    { source: "314이*건", target: "35김*연", type: "collab", bidirectional: false },
+    { source: "314이*건", target: "39박*현", type: "collab", bidirectional: false },
+    { source: "314이*건", target: "315이*연", type: "collab", bidirectional: false },
+    { source: "314이*건", target: "317이*슬", type: "collab", bidirectional: false },
+    { source: "314이*건", target: "319정*리", type: "collab", bidirectional: false },
+    { source: "315이*연", target: "32김*은", type: "collab", bidirectional: false },
+    { source: "315이*연", target: "33김*지", type: "collab", bidirectional: false },
+    { source: "315이*연", target: "34김*하", type: "collab", bidirectional: false },
+    { source: "315이*연", target: "39박*현", type: "collab", bidirectional: false },
+    { source: "315이*연", target: "311손*우", type: "collab", bidirectional: false },
+    { source: "315이*연", target: "317이*슬", type: "collab", bidirectional: false },
+    { source: "315이*연", target: "319정*리", type: "collab", bidirectional: false },
+    { source: "315이*연", target: "320조*은", type: "collab", bidirectional: false },
+    { source: "318임*우", target: "310서*호", type: "collab", bidirectional: false },
+    { source: "318임*우", target: "324허*영", type: "collab", bidirectional: false },
+    { source: "320조*은", target: "317이*슬", type: "collab", bidirectional: false },
+    { source: "321차*윤", target: "315이*연", type: "collab", bidirectional: false },
+    { source: "321차*윤", target: "322최*우", type: "collab", bidirectional: true },
+    { source: "323한*헌", target: "38박*후", type: "collab", bidirectional: false },
+    { source: "323한*헌", target: "318임*우", type: "collab", bidirectional: false },
+    { source: "324허*영", target: "31강*원", type: "collab", bidirectional: false },
+    { source: "324허*영", target: "321차*윤", type: "collab", bidirectional: false },
+    { source: "325홍*기", target: "33김*지", type: "collab", bidirectional: false },
+    { source: "325홍*기", target: "34김*하", type: "collab", bidirectional: false },
+    { source: "325홍*기", target: "312안*우", type: "collab", bidirectional: false },
+    { source: "325홍*기", target: "316이*규", type: "collab", bidirectional: false },
+  ],
+help: [
+    { source: "32김*은", target: "34김*하", type: "help", bidirectional: true },
+    { source: "33김*지", target: "313우*민", type: "help", bidirectional: false },
+    { source: "33김*지", target: "314이*건", type: "help", bidirectional: false },
+    { source: "33김*지", target: "325홍*기", type: "help", bidirectional: false },
+    { source: "34김*하", target: "33김*지", type: "help", bidirectional: false },
+    { source: "34김*하", target: "35김*연", type: "help", bidirectional: false },
+    { source: "34김*하", target: "39박*현", type: "help", bidirectional: false },
+    { source: "34김*하", target: "311손*우", type: "help", bidirectional: true },
+    { source: "35김*연", target: "32김*은", type: "help", bidirectional: false },
+    { source: "35김*연", target: "311손*우", type: "help", bidirectional: false },
+    { source: "39박*현", target: "319정*리", type: "help", bidirectional: false },
+    { source: "310서*호", target: "35김*연", type: "help", bidirectional: false },
+    { source: "311손*우", target: "317이*슬", type: "help", bidirectional: true },
+    { source: "313우*민", target: "312안*우", type: "help", bidirectional: false },
+    { source: "314이*건", target: "313우*민", type: "help", bidirectional: false },
+    { source: "324허*영", target: "31강*원", type: "help", bidirectional: false },
+    { source: "325홍*기", target: "314이*건", type: "help", bidirectional: false },
+  ]
+};
+  // 여기에 students 와 linkTypes 삽입
+  </script>
+
+  <svg width="0" height="0">
+    <defs>
+      <marker id="arrow-friend" viewBox="0 -5 10 10" refX="22" refY="0" markerWidth="10" markerHeight="10" orient="auto">
+        <path d="M0,-5L10,0L0,5" fill="#000000" />
+      </marker>
+      <marker id="arrow-desired" viewBox="0 -5 10 10" refX="22" refY="0" markerWidth="10" markerHeight="10" orient="auto">
+        <path d="M0,-5L10,0L0,5" fill="#5DADEC" />
+      </marker>
+      <marker id="arrow-study" viewBox="0 -5 10 10" refX="22" refY="0" markerWidth="10" markerHeight="10" orient="auto">
+        <path d="M0,-5L10,0L0,5" fill="#32CD32" />
+      </marker>
+      <marker id="arrow-collab" viewBox="0 -5 10 10" refX="22" refY="0" markerWidth="10" markerHeight="10" orient="auto">
+        <path d="M0,-5L10,0L0,5" fill="#8A2BE2" />
+      </marker>
+      <marker id="arrow-help" viewBox="0 -5 10 10" refX="22" refY="0" markerWidth="10" markerHeight="10" orient="auto">
+        <path d="M0,-5L10,0L0,5" fill="#FF0000" />
+      </marker>
+    </defs>
+  </svg>
+
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/d3/7.8.5/d3.min.js"></script>
+  <script>
+    let simulation, svg, g, linkGroup, nodeGroup, labelGroup;
+    const colorMap = {
+      friend: "#000000", desired: "#5DADEC", study: "#32CD32", collab: "#8A2BE2", help: "#FF0000"
+    };
+    const markerMap = {
+      friend: "arrow-friend", desired: "arrow-desired", study: "arrow-study",
+      collab: "arrow-collab", help: "arrow-help"
+    };
+    const activeTypes = { friend: false, desired: false, study: false, collab: false, help: false };
+
+    function drawNetwork() {
+      d3.select("svg.main").remove();
+      svg = d3.select("body").append("svg")
+        .attr("class", "main")
+        .attr("width", window.innerWidth)
+        .attr("height", window.innerHeight)
+        .call(d3.zoom().on("zoom", function (event) {
+          g.attr("transform", event.transform);
+        }))
+        .on("dblclick.zoom", null);
+
+      g = svg.append("g");
+      linkGroup = g.append("g");
+      nodeGroup = g.append("g");
+      labelGroup = g.append("g");
+
+      const allLinks = Object.entries(linkTypes).flatMap(([type, links]) =>
+        links.flatMap(d => {
+          const base = {
+            type: type,
+            stroke: colorMap[type],
+            marker: markerMap[type]
+          };
+          if (d.bidirectional) {
+            return [
+              { ...d, ...base }, // source -> target
+              { source: d.target, target: d.source, ...base } // target -> source
+            ];
+          } else {
+            return [{ ...d, ...base }];
+          }
+        })
+      );
+
+      simulation = d3.forceSimulation(students)
+        .force("link", d3.forceLink().id(d => d.id).distance(200).links(allLinks))
+        .force("charge", d3.forceManyBody().strength(-600))
+        .force("center", d3.forceCenter(window.innerWidth / 2, window.innerHeight / 2))
+        .force("collide", d3.forceCollide(60))
+        .on("end", () => {
+          students.forEach(d => {
+            d.fx = d.x;
+            d.fy = d.y;
+          });
+        });
+
+      const link = linkGroup.selectAll("line")
+        .data(allLinks)
+        .enter().append("line")
+        .attr("class", d => `link ${d.type}`)
+        .attr("stroke", d => d.stroke)
+        .attr("marker-end", d => `url(#${d.marker})`)
+        .style("display", d => activeTypes[d.type] ? "inline" : "none");
+
+      const node = nodeGroup.selectAll("circle")
+        .data(students)
+        .enter().append("circle")
+        .attr("r", 20)
+        .attr("fill", d => d.gender === 1 ? "pink" : d.gender === 0 ? "skyblue" : "gray")
+        .attr("class", "node")
+        .call(d3.drag()
+          .on("start", event => simulation.alphaTarget(0.3).restart())
+          .on("drag", (event, d) => { d.fx = event.x; d.fy = event.y; })
+          .on("end", (event, d) => { d.fx = event.x; d.fy = event.y; }))
+        .on("dblclick", function(event, d) {
+          node.classed("highlight-node", n => n === d);
+          link.classed("highlight", l => l.source.id === d.id || l.target.id === d.id);
+        });
+
+      const label = labelGroup.selectAll("text")
+        .data(students)
+        .enter().append("text")
+        .text(d => d.id)
+        .attr("font-size", "12px")
+        .attr("text-anchor", "middle")
+        .attr("dy", 4);
+
+      svg.on("click", () => {
+        node.classed("highlight-node", false);
+        link.classed("highlight", false);
+      });
+
+      simulation.on("tick", () => {
+        node.attr("cx", d => d.x).attr("cy", d => d.y);
+        label.attr("x", d => d.x).attr("y", d => d.y);
+        link
+          .attr("x1", d => d.source.x)
+          .attr("y1", d => d.source.y)
+          .attr("x2", d => d.target.x)
+          .attr("y2", d => d.target.y);
+      });
+    }
+
+    window.onload = drawNetwork;
+
+    function toggleLinks(type) {
+      activeTypes[type] = !activeTypes[type];
+      d3.selectAll(`.link.${type}`).style("display", activeTypes[type] ? "inline" : "none");
+    }
+  </script>
+</body>
+</html>
